@@ -63,7 +63,7 @@ void *allocate_pair(size_t howmuch)
 
 void free_pair(void *ptr, size_t howmuch)
 {
-    vm_deallocate(mach_task_self(), (vm_address_t)ptr, howmuch);
+    vm_deallocate(mach_task_self(), (vm_address_t)ptr, howmuch * 2);
 }
 
 size_t get_page_size(void)
@@ -94,6 +94,8 @@ static void test_size(size_t howmuch)
         buf[howmuch + i] = nrand48(seed);
     if(memcmp(buf, buf + howmuch, howmuch) != 0)
         fprintf(stderr, "FAIL: writing to second half didn't update first half with size %lu\n", (long)howmuch);
+    
+    free_pair(buf, howmuch);
 }
 
 void test_allocate_pair(void)
