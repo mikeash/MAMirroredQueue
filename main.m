@@ -3,6 +3,7 @@
 #import <Cocoa/Cocoa.h>
 
 #import "AllocatePair.h"
+#import "MAMirroredQueue.h"
 
 
 int main(int argc, char **argv)
