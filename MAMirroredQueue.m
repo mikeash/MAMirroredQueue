@@ -6,6 +6,7 @@
 #import "AllocatePair.h"
 
 
+// Utility functions
 static size_t RoundUpToPageSize(size_t n)
 {
     size_t pageSize = get_page_size();
@@ -20,6 +21,7 @@ static void *RoundDownToPageSize(void *ptr)
     return (void *)n;
 }
 
+// Class implementation
 @implementation MAMirroredQueue
 {
     char *_buf;
@@ -95,6 +97,7 @@ static void *RoundDownToPageSize(void *ptr)
     _contentLength += howmuch;
 }
 
+// UNIX-like compatibility wrappers
 - (size_t)read: (void *)buf count: (size_t)howmuch
 {
     size_t toRead = MIN(howmuch, [self availableBytes]);
@@ -112,6 +115,7 @@ static void *RoundDownToPageSize(void *ptr)
 
 @end
 
+// Test methods
 @implementation MAMirroredQueue (Testing)
 
 static void fail(const char *fmt, ...)
@@ -196,6 +200,9 @@ static void check_equal(MAMirroredQueue *queue, NSData *auxQueue)
 
 + (void)runTests
 {
+    [self testThreaded];
+    return;
+    
     unsigned short seed[3] = { 0 };
     
     for(int iter = 0; iter < 1000; iter++)
