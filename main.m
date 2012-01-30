@@ -1,8 +1,8 @@
-// clang -framework Foundation -W -Wall -Wno-unused-parameter main.m AllocatePair.c MAMirroredQueue.m
+// clang -framework Foundation -W -Wall -Wno-unused-parameter main.m AllocateMirrored.c MAMirroredQueue.m
 
 #import <Cocoa/Cocoa.h>
 
-#import "AllocatePair.h"
+#import "AllocateMirrored.h"
 #import "MAMirroredQueue.h"
 
 
@@ -10,7 +10,7 @@ int main(int argc, char **argv)
 {
     @autoreleasepool
     {
-        test_allocate_pair();
+        test_allocate_mirrored();
         [MAMirroredQueue runTests];
     }
 }

@@ -3,8 +3,10 @@
 
 #include <mach/mach.h>
 
-#import "AllocatePair.h"
+#import "AllocateMirrored.h"
 
+
+#define MIRROR_COUNT 2
 
 // Utility functions
 static size_t RoundUpToPageSize(size_t n)
@@ -35,7 +37,7 @@ static void *RoundDownToPageSize(void *ptr)
 - (void)dealloc
 {
     if(_buf)
-        free_pair(_buf, _bufSize);
+        free_mirrored(_buf, _bufSize, MIRROR_COUNT);
 }
 
 - (size_t)availableBytes
@@ -76,7 +78,7 @@ static void *RoundDownToPageSize(void *ptr)
     
     // else reallocate
     size_t newBufferLength = RoundUpToPageSize(contentLength + howmuch);
-    char *newBuf = allocate_pair(newBufferLength);
+    char *newBuf = allocate_mirrored(newBufferLength, MIRROR_COUNT);
     
     if(_bufSize > 0)
     {
@@ -89,7 +91,7 @@ static void *RoundDownToPageSize(void *ptr)
         if(*newReadPointer != *_readPointer)
             abort();
         
-        free_pair(_buf, _bufSize);
+        free_mirrored(_buf, _bufSize, MIRROR_COUNT);
         _readPointer = newReadPointer;
         _writePointer = _readPointer + contentLength;
     }
