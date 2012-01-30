@@ -26,9 +26,10 @@ static void *RoundDownToPageSize(void *ptr)
 {
     char *_buf;
     size_t _bufSize;
+    BOOL _allocationLocked;
     
     char *_readPointer;
-    size_t _contentLength;
+    char *_writePointer;
 }
 
 - (void)dealloc
@@ -39,7 +40,14 @@ static void *RoundDownToPageSize(void *ptr)
 
 - (size_t)availableBytes
 {
-    return _contentLength;
+    ptrdiff_t amount = _writePointer - _readPointer;
+    
+    if(amount < 0)
+        amount += _bufSize;
+    else if((size_t)amount > _bufSize)
+        amount -= _bufSize;
+    
+    return amount;
 }
 
 - (void *)readPointer
@@ -50,51 +58,71 @@ static void *RoundDownToPageSize(void *ptr)
 - (void)advanceReadPointer: (size_t)howmuch
 {
     _readPointer += howmuch;
-    _contentLength -= howmuch;
     
     if((size_t)(_readPointer - _buf) >= _bufSize)
+    {
         _readPointer -= _bufSize;
+        _writePointer -= _bufSize;
+    }
 }
 
-- (void)ensureWriteSpace: (size_t)howmuch
+- (BOOL)ensureWriteSpace: (size_t)howmuch
 {
-    if(howmuch > _bufSize - _contentLength)
+    size_t contentLength = [self availableBytes];
+    if(howmuch <= _bufSize - contentLength)
+        return YES;
+    else if(_allocationLocked)
+        return NO;
+    
+    // else reallocate
+    size_t newBufferLength = RoundUpToPageSize(contentLength + howmuch);
+    char *newBuf = allocate_pair(newBufferLength);
+    
+    if(_bufSize > 0)
     {
-        size_t newBufferLength = RoundUpToPageSize(_contentLength + howmuch);
-        char *newBuf = allocate_pair(newBufferLength);
+        char *copyStart = RoundDownToPageSize(_readPointer);
+        size_t copyLength = RoundUpToPageSize(_writePointer - copyStart);
         
-        if(_bufSize > 0)
-        {
-            char *copyStart = RoundDownToPageSize(_readPointer);
-            size_t copyLength = RoundUpToPageSize(_contentLength + (_readPointer - copyStart));
-            
-            vm_copy(mach_task_self(), (vm_address_t)copyStart, copyLength, (vm_address_t)newBuf);
-            
-            char *newReadPointer = newBuf + (_readPointer - copyStart);
-            if(*newReadPointer != *_readPointer)
-                abort();
-            
-            free_pair(_buf, _bufSize);
-            _readPointer = newReadPointer;
-        }
-        else
-        {
-            _readPointer = newBuf;
-        }
+        vm_copy(mach_task_self(), (vm_address_t)copyStart, copyLength, (vm_address_t)newBuf);
         
-        _buf = newBuf;
-        _bufSize = newBufferLength;
+        char *newReadPointer = newBuf + (_readPointer - copyStart);
+        if(*newReadPointer != *_readPointer)
+            abort();
+        
+        free_pair(_buf, _bufSize);
+        _readPointer = newReadPointer;
+        _writePointer = _readPointer + contentLength;
     }
+    else
+    {
+        _readPointer = newBuf;
+        _writePointer = newBuf;
+    }
+    
+    _buf = newBuf;
+    _bufSize = newBufferLength;
+    
+    return YES;
 }
 
 - (void *)writePointer
 {
-    return _readPointer + _contentLength;
+    return _writePointer;
 }
 
 - (void)advanceWritePointer: (size_t)howmuch
 {
-    _contentLength += howmuch;
+    _writePointer += howmuch;
+}
+
+- (void)lockAllocation
+{
+    _allocationLocked = YES;
+}
+
+- (void)unlockAllocation
+{
+    _allocationLocked = NO;
 }
 
 // UNIX-like compatibility wrappers
@@ -144,7 +172,9 @@ static void check_equal(MAMirroredQueue *queue, NSData *auxQueue)
 {
     unsigned short seed[3] = { 0 };
     
-    for(int iter = 0; iter < 100; iter++)
+    NSLock *queueLock = [[NSLock alloc] init];
+    
+    for(int iter = 0; iter < 1000000; iter++)
     {
         unsigned short *seedPtr1 = (unsigned short[]) { nrand48(seed), nrand48(seed), nrand48(seed) };
         unsigned short *seedPtr2 = (unsigned short[]) { nrand48(seed), nrand48(seed), nrand48(seed) };
@@ -152,6 +182,8 @@ static void check_equal(MAMirroredQueue *queue, NSData *auxQueue)
         NSUInteger targetLength = nrand48(seed) % 1024 * 1024 + 1;
         
         MAMirroredQueue *queue = [[MAMirroredQueue alloc] init];
+        [queue ensureWriteSpace: 10240];
+        [queue lockAllocation];
         
         NSMutableData *inData = [NSMutableData data];
         NSMutableData *outData = [NSMutableData data];
@@ -169,9 +201,17 @@ static void check_equal(MAMirroredQueue *queue, NSData *auxQueue)
                 for(unsigned i = 0; i < len; i++)
                     buf[i] = nrand48(seedPtr1);
                 
-                [queue ensureWriteSpace: len];
+                [queueLock lock];
+                while(![queue ensureWriteSpace: len])
+                {
+                    [queueLock unlock];
+                    usleep(1);
+                    [queueLock lock];
+                }
+                
                 memcpy([queue writePointer], buf, len);
                 [queue advanceWritePointer: len];
+                [queueLock unlock];
                 
                 [inData appendBytes: buf length: len];
             }
@@ -180,13 +220,17 @@ static void check_equal(MAMirroredQueue *queue, NSData *auxQueue)
             while([outData length] < targetLength)
             {
                 unsigned len = nrand48(seedPtr2) % 10240 + 1;
+                [queueLock lock];
                 unsigned available = [queue availableBytes];
+                [queueLock unlock];
                 len = MIN(len, available);
                 
                 if(len > 0)
                 {
+                    [queueLock lock];
                     [outData appendBytes: [queue readPointer] length: len];
                     [queue advanceReadPointer: len];
+                    [queueLock unlock];
                 }
             }
         });
@@ -195,6 +239,8 @@ static void check_equal(MAMirroredQueue *queue, NSData *auxQueue)
         
         if(![inData isEqual: outData])
             fail("Datas not equal!");
+        
+        fprintf(stderr, "iteration %d done\n", iter);
     }
 }
 

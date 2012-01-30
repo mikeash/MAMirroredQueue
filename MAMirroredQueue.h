@@ -8,9 +8,12 @@
 - (void *)readPointer;
 - (void)advanceReadPointer: (size_t)howmuch;
 
-- (void)ensureWriteSpace: (size_t)howmuch;
+- (BOOL)ensureWriteSpace: (size_t)howmuch;
 - (void *)writePointer;
 - (void)advanceWritePointer: (size_t)howmuch;
+
+- (void)lockAllocation;
+- (void)unlockAllocation;
 
 // UNIX-like wrappers
 
