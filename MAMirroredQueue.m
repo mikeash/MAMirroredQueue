@@ -6,7 +6,7 @@
 #import "AllocateMirrored.h"
 
 
-#define MIRROR_COUNT 2
+#define MIRROR_COUNT 3
 
 // Utility functions
 static size_t RoundUpToPageSize(size_t n)
