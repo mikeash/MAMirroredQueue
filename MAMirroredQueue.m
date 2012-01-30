@@ -62,7 +62,7 @@ static void *RoundDownToPageSize(void *ptr)
     if((size_t)(_readPointer - _buf) >= _bufSize)
     {
         _readPointer -= _bufSize;
-        _writePointer -= _bufSize;
+        __sync_sub_and_fetch(&_writePointer, _bufSize);
     }
 }
 
@@ -112,7 +112,7 @@ static void *RoundDownToPageSize(void *ptr)
 
 - (void)advanceWritePointer: (size_t)howmuch
 {
-    _writePointer += howmuch;
+    __sync_add_and_fetch(&_writePointer, howmuch);
 }
 
 - (void)lockAllocation
@@ -172,7 +172,7 @@ static void check_equal(MAMirroredQueue *queue, NSData *auxQueue)
 {
     unsigned short seed[3] = { 0 };
     
-    NSLock *queueLock = [[NSLock alloc] init];
+    NSLock *queueLock = nil;//[[NSLock alloc] init];
     
     for(int iter = 0; iter < 1000000; iter++)
     {
