@@ -170,13 +170,13 @@ static void check_equal(MAMirroredQueue *queue, NSData *auxQueue)
             fail("bytes don't match, %d != %d at index %lu", buf1[i], buf2[i], (long)i);
 }
 
-+ (void)testThreaded
++ (void)testThreaded: (int)iterCount
 {
     unsigned short seed[3] = { 0 };
     
     NSLock *queueLock = nil;//[[NSLock alloc] init];
     
-    for(int iter = 0; iter < 1000000; iter++)
+    for(int iter = 0; iter < iterCount; iter++)
         @autoreleasepool
         {
             unsigned short *seedPtr1 = (unsigned short[]) { nrand48(seed), nrand48(seed), nrand48(seed) };
@@ -245,19 +245,14 @@ static void check_equal(MAMirroredQueue *queue, NSData *auxQueue)
             
             if(![inData isEqual: outData])
                 fail("Datas not equal!");
-            
-            fprintf(stderr, "iteration %d done\n", iter);
         }
 }
 
-+ (void)runTests
++ (void)testNormal: (int)iterCount
 {
-    [self testThreaded];
-    return;
-    
     unsigned short seed[3] = { 0 };
     
-    for(int iter = 0; iter < 1000; iter++)
+    for(int iter = 0; iter < iterCount; iter++)
     {
         MAMirroredQueue *queue = [[MAMirroredQueue alloc] init];
         NSMutableData *auxQueue = [NSMutableData data];
@@ -301,5 +296,11 @@ static void check_equal(MAMirroredQueue *queue, NSData *auxQueue)
         }
     }
 }
+
++ (void)runTests
+{
+    [self testNormal: 10];
+    [self testThreaded: 1000];
+}    
 
 @end
