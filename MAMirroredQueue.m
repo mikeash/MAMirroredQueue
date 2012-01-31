@@ -177,73 +177,77 @@ static void check_equal(MAMirroredQueue *queue, NSData *auxQueue)
     NSLock *queueLock = nil;//[[NSLock alloc] init];
     
     for(int iter = 0; iter < 1000000; iter++)
-    {
-        unsigned short *seedPtr1 = (unsigned short[]) { nrand48(seed), nrand48(seed), nrand48(seed) };
-        unsigned short *seedPtr2 = (unsigned short[]) { nrand48(seed), nrand48(seed), nrand48(seed) };
-        
-        NSUInteger targetLength = nrand48(seed) % 1024 * 1024 + 1;
-        
-        MAMirroredQueue *queue = [[MAMirroredQueue alloc] init];
-        [queue ensureWriteSpace: 10240];
-        [queue lockAllocation];
-        
-        NSMutableData *inData = [NSMutableData data];
-        NSMutableData *outData = [NSMutableData data];
-        
-        dispatch_group_t group = dispatch_group_create();
-        
-        dispatch_group_async(group, dispatch_get_global_queue(0, 0), ^{
-            while([inData length] < targetLength)
-            {
-                unsigned len = nrand48(seedPtr1) % 1024 + 1;
-                unsigned remaining = targetLength - [inData length];
-                len = MIN(len, remaining);
-                
-                char buf[len];
-                for(unsigned i = 0; i < len; i++)
-                    buf[i] = nrand48(seedPtr1);
-                
-                [queueLock lock];
-                while(![queue ensureWriteSpace: len])
-                {
-                    [queueLock unlock];
-                    usleep(1);
-                    [queueLock lock];
-                }
-                
-                memcpy([queue writePointer], buf, len);
-                [queue advanceWritePointer: len];
-                [queueLock unlock];
-                
-                [inData appendBytes: buf length: len];
-            }
-        });
-        dispatch_group_async(group, dispatch_get_global_queue(0, 0), ^{
-            while([outData length] < targetLength)
-            {
-                unsigned len = nrand48(seedPtr2) % 10240 + 1;
-                [queueLock lock];
-                unsigned available = [queue availableBytes];
-                [queueLock unlock];
-                len = MIN(len, available);
-                
-                if(len > 0)
-                {
-                    [queueLock lock];
-                    [outData appendBytes: [queue readPointer] length: len];
-                    [queue advanceReadPointer: len];
-                    [queueLock unlock];
-                }
-            }
-        });
-        
-        dispatch_group_wait(group, DISPATCH_TIME_FOREVER);
-        
-        if(![inData isEqual: outData])
-            fail("Datas not equal!");
-        
-        fprintf(stderr, "iteration %d done\n", iter);
-    }
+        @autoreleasepool
+        {
+            unsigned short *seedPtr1 = (unsigned short[]) { nrand48(seed), nrand48(seed), nrand48(seed) };
+            unsigned short *seedPtr2 = (unsigned short[]) { nrand48(seed), nrand48(seed), nrand48(seed) };
+            
+            NSUInteger targetLength = nrand48(seed) % 1024 * 1024 + 1;
+            
+            MAMirroredQueue *queue = [[MAMirroredQueue alloc] init];
+            [queue ensureWriteSpace: 10240];
+            [queue lockAllocation];
+            
+            NSMutableData *inData = [NSMutableData data];
+            NSMutableData *outData = [NSMutableData data];
+            
+            dispatch_group_t group = dispatch_group_create();
+            
+            dispatch_group_async(group, dispatch_get_global_queue(0, 0), ^{
+                while([inData length] < targetLength)
+                    @autoreleasepool
+                    {
+                        unsigned len = nrand48(seedPtr1) % 1024 + 1;
+                        unsigned remaining = targetLength - [inData length];
+                        len = MIN(len, remaining);
+                        
+                        char buf[len];
+                        for(unsigned i = 0; i < len; i++)
+                            buf[i] = nrand48(seedPtr1);
+                        
+                        [queueLock lock];
+                        while(![queue ensureWriteSpace: len])
+                        {
+                            [queueLock unlock];
+                            usleep(1);
+                            [queueLock lock];
+                        }
+                        
+                        memcpy([queue writePointer], buf, len);
+                        [queue advanceWritePointer: len];
+                        [queueLock unlock];
+                        
+                        [inData appendBytes: buf length: len];
+                    }
+            });
+            dispatch_group_async(group, dispatch_get_global_queue(0, 0), ^{
+                while([outData length] < targetLength)
+                    @autoreleasepool
+                    {
+                        unsigned len = nrand48(seedPtr2) % 10240 + 1;
+                        [queueLock lock];
+                        unsigned available = [queue availableBytes];
+                        [queueLock unlock];
+                        len = MIN(len, available);
+                        
+                        if(len > 0)
+                        {
+                            [queueLock lock];
+                            [outData appendBytes: [queue readPointer] length: len];
+                            [queue advanceReadPointer: len];
+                            [queueLock unlock];
+                        }
+                    }
+            });
+            
+            dispatch_group_wait(group, DISPATCH_TIME_FOREVER);
+            dispatch_release(group);
+            
+            if(![inData isEqual: outData])
+                fail("Datas not equal!");
+            
+            fprintf(stderr, "iteration %d done\n", iter);
+        }
 }
 
 + (void)runTests
