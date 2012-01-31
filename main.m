@@ -1,4 +1,4 @@
-// clang -framework Foundation -W -Wall -Wno-unused-parameter main.m AllocateMirrored.c MAMirroredQueue.m
+// clang -framework Foundation -W -Wall -Wno-unused-parameter -fobjc-arc main.m AllocateMirrored.c MAMirroredQueue.m
 
 #import <Cocoa/Cocoa.h>
 
