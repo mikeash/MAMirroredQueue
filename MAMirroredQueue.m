@@ -11,16 +11,12 @@
 // Utility functions
 static size_t RoundUpToPageSize(size_t n)
 {
-    size_t pageSize = get_page_size();
-    return ((n + pageSize - 1) / pageSize) * pageSize;
+    return round_page(n);
 }
 
 static void *RoundDownToPageSize(void *ptr)
 {
-    size_t pageSize = get_page_size();
-    intptr_t n = (intptr_t)ptr;
-    n = (n / pageSize) * pageSize;
-    return (void *)n;
+    return (void *)trunc_page((intptr_t)ptr);
 }
 
 // Class implementation

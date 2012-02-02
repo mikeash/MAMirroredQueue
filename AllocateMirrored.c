@@ -11,7 +11,7 @@
 void *allocate_mirrored(size_t howmuch, unsigned howmany)
 {
     // make sure it's positive and an exact multiple of page size
-    if(howmuch <= 0 || howmuch != howmuch / get_page_size() * get_page_size())
+    if(howmuch <= 0 || howmuch != trunc_page(howmuch))
     {
         errno = EINVAL;
         return NULL;
