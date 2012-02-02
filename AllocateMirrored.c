@@ -52,7 +52,7 @@ void *allocate_mirrored(size_t howmuch, unsigned howmany)
                                          VM_INHERIT_COPY);
             target += howmuch;
             
-            if(err == KERN_PROTECTION_FAILURE)
+            if(err == KERN_NO_SPACE)
             {
                 CHECK_ERR(vm_deallocate(mach_task_self(), (vm_address_t)mem, howmuch * i), 0);
                 mem = NULL;
