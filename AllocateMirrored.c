@@ -73,14 +73,7 @@ void free_mirrored(void *ptr, size_t howmuch, unsigned howmany)
 
 size_t get_page_size(void)
 {
-    static vm_size_t pageSize;
-    static dispatch_once_t pred;
-    dispatch_once(&pred, ^{
-        kern_return_t ret = host_page_size(mach_host_self(), &pageSize);
-        if(ret != KERN_SUCCESS)
-            pageSize = 4096; // a pretty good guess
-    });
-    return pageSize;
+    return vm_page_size;
 }
 
 // test code here
