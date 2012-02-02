@@ -54,7 +54,7 @@ void *allocate_mirrored(size_t howmuch, unsigned howmany)
             
             if(err == KERN_PROTECTION_FAILURE)
             {
-                CHECK_ERR(vm_deallocate(mach_task_self(), (vm_address_t)mem, howmuch), 0);
+                CHECK_ERR(vm_deallocate(mach_task_self(), (vm_address_t)mem, howmuch * i), 0);
                 mem = NULL;
             }
             else
