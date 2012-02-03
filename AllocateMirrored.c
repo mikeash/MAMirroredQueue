@@ -59,7 +59,7 @@ void *allocate_mirrored(size_t howmuch, unsigned howmany)
             }
             else
             {
-                CHECK_ERR(err, howmuch);
+                CHECK_ERR(err, howmuch * i);
             }
         }
     }
