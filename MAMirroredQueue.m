@@ -134,7 +134,11 @@ static void *RoundDownToPageSize(void *ptr)
 
 - (size_t)write: (const void *)buf count: (size_t)howmuch
 {
-    [self ensureWriteSpace: howmuch];
+    if(_allocationLocked)
+        howmuch = MIN(howmuch, _bufSize - [self availableBytes]);
+    else
+        [self ensureWriteSpace: howmuch];
+    
     memcpy([self writePointer], buf, howmuch);
     return howmuch;
 }
