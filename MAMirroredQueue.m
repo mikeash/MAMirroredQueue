@@ -140,6 +140,7 @@ static void *RoundDownToPageSize(void *ptr)
         [self ensureWriteSpace: howmuch];
     
     memcpy([self writePointer], buf, howmuch);
+    [self advanceWritePointer: howmuch];
     return howmuch;
 }
 
